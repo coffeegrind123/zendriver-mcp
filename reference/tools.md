@@ -8,7 +8,7 @@ Start a new browser instance. Must be called before all other tools.
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
 | headless | bool | false | Run without visible window |
-| proxy | string | null | Proxy URL (http://, socks5://) |
+| proxy | string | null | Proxy URL — supports `http://host:port`, `socks5://host:port`, and authenticated `http://user:pass@host:port` (credentials handled via CDP) |
 | user_data_dir | string | null | Path to Chrome profile directory |
 
 ### stop_browser

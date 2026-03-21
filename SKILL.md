@@ -19,6 +19,7 @@ No tool works until `start_browser()` completes. No page tools work until
 | Default (headful) | `start_browser()` |
 | Headless scraping | `start_browser(headless=true)` |
 | With proxy | `start_browser(proxy="socks5://host:port")` |
+| Authenticated proxy | `start_browser(proxy="http://user:pass@host:port")` |
 | Persist session | `start_browser(user_data_dir="/path/to/profile")` |
 | Check if running | `get_browser_status()` |
 
@@ -120,8 +121,9 @@ Screenshot   → screenshot(save_path="/tmp/page.png")
 9. **Error recovery**: If a click or navigation fails, `screenshot()` to
    visually diagnose. The page may have changed or a modal may block.
 
-10. **Cookies for auth**: Use `get_cookies()` / `set_cookies()` to persist
-    authentication across browser sessions.
+10. **Auth persistence**: Use `get_cookies()` / `set_cookies()` for cookie-based auth.
+    For JWT-based SPAs, use `get_local_storage()` / `set_local_storage()` — many
+    modern apps store tokens in localStorage, not cookies.
 
 ## Common Workflows
 
@@ -175,6 +177,8 @@ start_browser() → navigate(url) → wait(2)
 | execute_js fails | Started with `return` | Remove `return`, use IIFE |
 | Network logs empty | Didn't clear first | `clear_logs()` before action |
 | Form submit no effect | Need explicit submit | `submit_form()` or `press_enter()` |
+| Interaction tree empty | SPA/React not hydrated | `wait(3-5)` then retry, or use `find_inputs()`/`find_buttons()` |
+| Clicks blocked by overlay | Cookie banner or modal | Dismiss banner first: `click(text="Accept All")` |
 
 ## Critical Pitfalls
 
@@ -187,6 +191,8 @@ start_browser() → navigate(url) → wait(2)
 - ❌ Do NOT read network logs without clearing first — stale entries mislead
 - ❌ Do NOT use `mouse_click(x,y)` unless no other option — coordinates are fragile
 - ❌ Do NOT call `get_interaction_tree()` then ignore the IDs — that's the whole point
+- ❌ Do NOT interact with elements before dismissing cookie consent banners — they block clicks
+- ❌ Do NOT assume auth is in cookies — check `get_local_storage()` for JWT tokens too
 
 ## Self-Refinement Protocol
 
