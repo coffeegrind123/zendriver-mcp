@@ -193,6 +193,7 @@ start_browser() → navigate(url) → wait(2)
 - ❌ Do NOT call `get_interaction_tree()` then ignore the IDs — that's the whole point
 - ❌ Do NOT interact with elements before dismissing cookie consent banners — they block clicks
 - ❌ Do NOT assume auth is in cookies — check `get_local_storage()` for JWT tokens too
+- ❌ Do NOT take screenshots without a timeout — screenshots can hang indefinitely on slow or unresponsive pages, blocking the session. Always set a timeout (e.g. `timeout: 10000`)
 
 ## Self-Refinement Protocol
 
