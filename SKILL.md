@@ -1,9 +1,13 @@
 ---
 name: browser-automation
 description: Browser automation using browser MCP tools for web scraping, form filling, testing, and security auditing. Provides 35+ tools for controlling a Chromium browser — navigation, element interaction, DOM querying, tab management, network monitoring, and JavaScript execution. Use when asked to browse, scrape, fill a form, automate a website, check a page, open a browser, take a screenshot, monitor network requests, run a security audit, or interact with any web page programmatically. Features a token-optimized DOM walker that reduces HTML to compact JSON with numeric IDs.
+allowed-tools: mcp__browser__start_browser mcp__browser__stop_browser mcp__browser__navigate mcp__browser__click mcp__browser__type_text mcp__browser__fill_form mcp__browser__submit_form mcp__browser__select_option mcp__browser__screenshot mcp__browser__get_content mcp__browser__get_text_content mcp__browser__get_interaction_tree mcp__browser__find_element mcp__browser__find_all_elements mcp__browser__find_buttons mcp__browser__find_inputs mcp__browser__execute_js mcp__browser__wait mcp__browser__wait_for_element mcp__browser__wait_for_network mcp__browser__wait_for_request mcp__browser__scroll mcp__browser__scroll_to_element mcp__browser__press_enter mcp__browser__press_key mcp__browser__mouse_click mcp__browser__focus_element mcp__browser__clear_input mcp__browser__upload_file mcp__browser__get_element_text mcp__browser__get_element_attribute mcp__browser__get_page_info mcp__browser__get_browser_status mcp__browser__new_tab mcp__browser__list_tabs mcp__browser__switch_tab mcp__browser__close_tab mcp__browser__go_back mcp__browser__go_forward mcp__browser__reload_page mcp__browser__get_cookies mcp__browser__set_cookie mcp__browser__clear_storage mcp__browser__get_local_storage mcp__browser__set_local_storage mcp__browser__get_console_logs mcp__browser__clear_logs mcp__browser__get_network_logs mcp__browser__run_security_audit
+when_to_use: "Use when the user wants to browse a website, scrape web content, fill out forms, automate browser interactions, take screenshots, run security audits, or interact with any web page. Examples: 'open this URL', 'scrape that page', 'fill out the form', 'take a screenshot', 'check this website', 'automate the login', 'run a security audit', 'monitor network requests'."
+argument-hint: "[url or task description]"
+context: fork
 metadata:
   author: coffeegrind123
-  version: "1.1"
+  version: "1.2"
 ---
 
 # Browser Automation
@@ -49,7 +53,7 @@ a numeric ID you can click/type into directly.
 - `click(selector="1")` — clicks element with id 1
 - `type_text(text="hello", selector="2")` — types into element with id 2
 
-See `reference/dom-walker.md` for full type/region codes and label inference.
+Read `reference/dom-walker.md` if you need the full type/region code reference or label inference rules.
 
 ## Tool Selection Decision Tree
 
@@ -211,6 +215,6 @@ quirk), append it to `LEARNINGS.md`:
 - **Rule**: The new rule to follow
 ```
 
-See `reference/tools.md` for complete tool documentation.
-See `reference/patterns.md` for additional automation recipes.
-See `reference/dom-walker.md` for interaction tree internals.
+Read `reference/tools.md` if you need full parameter documentation for any tool.
+Read `reference/patterns.md` if you need automation recipes beyond the common workflows above.
+Read `reference/dom-walker.md` if the interaction tree output is unclear or you need type/region code details.
