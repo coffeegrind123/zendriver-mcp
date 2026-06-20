@@ -1,13 +1,13 @@
 ---
 name: browser-automation
-description: Browser automation using browser MCP tools for web scraping, form filling, testing, and security auditing. Provides 35+ tools for controlling a Chromium browser — navigation, element interaction, DOM querying, tab management, network monitoring, and JavaScript execution. Use when asked to browse, scrape, fill a form, automate a website, check a page, open a browser, take a screenshot, monitor network requests, run a security audit, or interact with any web page programmatically. Features a token-optimized DOM walker that reduces HTML to compact JSON with numeric IDs.
-allowed-tools: mcp__browser__start_browser mcp__browser__stop_browser mcp__browser__navigate mcp__browser__click mcp__browser__type_text mcp__browser__fill_form mcp__browser__submit_form mcp__browser__select_option mcp__browser__screenshot mcp__browser__get_content mcp__browser__get_text_content mcp__browser__get_interaction_tree mcp__browser__find_element mcp__browser__find_all_elements mcp__browser__find_buttons mcp__browser__find_inputs mcp__browser__execute_js mcp__browser__wait mcp__browser__wait_for_element mcp__browser__wait_for_network mcp__browser__wait_for_request mcp__browser__scroll mcp__browser__scroll_to_element mcp__browser__press_enter mcp__browser__press_key mcp__browser__mouse_click mcp__browser__focus_element mcp__browser__clear_input mcp__browser__upload_file mcp__browser__get_element_text mcp__browser__get_element_attribute mcp__browser__get_page_info mcp__browser__get_browser_status mcp__browser__new_tab mcp__browser__list_tabs mcp__browser__switch_tab mcp__browser__close_tab mcp__browser__go_back mcp__browser__go_forward mcp__browser__reload_page mcp__browser__get_cookies mcp__browser__set_cookie mcp__browser__clear_storage mcp__browser__get_local_storage mcp__browser__set_local_storage mcp__browser__get_console_logs mcp__browser__clear_logs mcp__browser__get_network_logs mcp__browser__run_security_audit
+description: Browser automation using browser MCP tools for web scraping, form filling, testing, and security auditing. Provides 35+ tools for controlling a Chromium browser — navigation, element interaction, DOM querying, tab management, network monitoring, and JavaScript execution. Use when asked to browse, scrape, fill a form, automate a website, check a page, open a browser, take a screenshot, monitor network requests, run a security audit, bypass a Cloudflare challenge, or interact with any web page programmatically. Features a token-optimized DOM walker that reduces HTML to compact JSON with numeric IDs, plus Cloudflare Turnstile solving and fingerprint (user-agent/locale/timezone/geo) overrides.
+allowed-tools: mcp__browser__start_browser mcp__browser__stop_browser mcp__browser__navigate mcp__browser__click mcp__browser__type_text mcp__browser__fill_form mcp__browser__submit_form mcp__browser__select_option mcp__browser__screenshot mcp__browser__get_content mcp__browser__get_text_content mcp__browser__get_interaction_tree mcp__browser__find_element mcp__browser__find_all_elements mcp__browser__find_buttons mcp__browser__find_inputs mcp__browser__execute_js mcp__browser__wait mcp__browser__wait_for_element mcp__browser__wait_for_network mcp__browser__wait_for_request mcp__browser__scroll mcp__browser__scroll_to_element mcp__browser__press_enter mcp__browser__press_key mcp__browser__mouse_click mcp__browser__focus_element mcp__browser__clear_input mcp__browser__upload_file mcp__browser__get_element_text mcp__browser__get_element_attribute mcp__browser__get_page_info mcp__browser__get_browser_status mcp__browser__new_tab mcp__browser__list_tabs mcp__browser__switch_tab mcp__browser__close_tab mcp__browser__go_back mcp__browser__go_forward mcp__browser__reload_page mcp__browser__get_cookies mcp__browser__set_cookie mcp__browser__clear_storage mcp__browser__get_local_storage mcp__browser__set_local_storage mcp__browser__get_console_logs mcp__browser__clear_logs mcp__browser__get_network_logs mcp__browser__run_security_audit mcp__browser__bypass_cloudflare mcp__browser__is_cloudflare_challenge_present mcp__browser__set_user_agent mcp__browser__clear_user_agent mcp__browser__set_locale mcp__browser__set_timezone mcp__browser__set_geolocation
 when_to_use: "Use when the user wants to browse a website, scrape web content, fill out forms, automate browser interactions, take screenshots, run security audits, or interact with any web page. Examples: 'open this URL', 'scrape that page', 'fill out the form', 'take a screenshot', 'check this website', 'automate the login', 'run a security audit', 'monitor network requests'."
 argument-hint: "[url or task description]"
 context: fork
 metadata:
   author: coffeegrind123
-  version: "1.2"
+  version: "1.3"
 ---
 
 # Browser Automation
@@ -98,6 +98,20 @@ Visible text → get_text_content()
 API response → clear_logs() → [action] → wait_for_request(url_pattern="api/")
 Screenshot   → screenshot(save_path="/tmp/page.png")
 ```
+
+### "The page is blocked by Cloudflare"
+
+```
+Probe   → is_cloudflare_challenge_present()   # fast, no clicking
+Solve   → bypass_cloudflare(timeout=20)       # clicks the Turnstile checkbox
+```
+
+Most Cloudflare-gated sites pass automatically when the browser is **headed**
+(started with `start_browser(headless=false)`); under `--headless=new` the
+Turnstile is often unsolvable. For an interactive challenge that survives headed
+mode, `bypass_cloudflare()` solves it (wraps zendriver's built-in `verify_cf`).
+`set_user_agent` / `set_locale` / `set_timezone` / `set_geolocation` align the
+fingerprint with a proxy's geo when needed.
 
 ## General Rules
 
