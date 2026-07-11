@@ -40,3 +40,28 @@ site-specific quirks, timing requirements, or selector patterns.
 - **Context**: Vue.js SPA (Vuetify framework) — interaction tree returned `[]`
 - **Learning**: The DOM walker may not find elements in Shadow DOM or dynamically-rendered SPA components. `find_buttons()` and `find_inputs()` use different detection logic and may succeed where the tree fails.
 - **Rule**: If `get_interaction_tree()` returns empty, try `find_buttons()`, `find_inputs()`, or `execute_js` to query the DOM directly.
+
+## 2026-07-11: low_memory launch flags are Cloudflare-detectable
+- **Context**: Inspecting play-cs.com (Cloudflare Turnstile). `bypass_cloudflare` timed out ("could not solve the checkbox") when the browser was started with `low_memory=true`.
+- **Learning**: `low_memory` adds `--disable-gpu` / software-WebGL flags that anti-bot fingerprinting flags as automation, so the Turnstile never clears. Relaunching WITHOUT `low_memory` (plain `start_browser`) let the checkbox solve on the same site.
+- **Rule**: For any Cloudflare/anti-bot site, launch `start_browser` WITHOUT `low_memory` (accept the higher memory use). Only use `low_memory` on constrained hosts for non-protected pages.
+
+## 2026-07-11: execute_js does NOT await Promises (async returns {})
+- **Context**: Ran an `async` IIFE in `execute_js` (a `fetch()` to grab a favicon) — the tool returned `{}` with no data.
+- **Learning**: The wrapper serializes the return value synchronously; an `async` function returns a Promise that serializes to `{}`. `await`/`.then` results never come back.
+- **Rule**: Keep `execute_js` synchronous. For network, either navigate directly to the resource URL and read it from the resulting document, or use a synchronous `XMLHttpRequest` (`xhr.open(..., false)`). Never rely on `async`/`await` inside `execute_js`.
+
+## 2026-07-11: site-wrapped Turnstile needs a manual form submit after bypass
+- **Context**: `bypass_cloudflare` returned "solved" and the widget showed a green "Success!", but the page stayed on "Verification required" — a site-custom challenge, not the standard CF interstitial.
+- **Learning**: Some sites embed Turnstile in their OWN `<form action="/verify_captcha" method="post">` with a populated hidden `<input name="cf-turnstile-response">` (the solved token, ~700 chars) and a manual "Verify" submit button. `bypass_cloudflare` only solves the checkbox; it does not submit the form, and `click(text="Verify")` may not trigger the submit.
+- **Rule**: After `bypass_cloudflare` shows "Success!" but the page doesn't advance, inspect `document.forms` for a challenge form with a filled `cf-turnstile-response`, then submit it directly: `execute_js("(function(){document.forms[0].submit();return true})()")`.
+
+## 2026-07-11: static assets often bypass the JS challenge — fetch with curl
+- **Context**: Needed each site's favicon; some sites were Cloudflare-gated on the HTML.
+- **Learning**: CF challenges HTML *navigations*, not always static assets. `curl -A "<a real Chrome UA>" --compressed <favicon-url>` returned the real PNG (HTTP 200) even on a challenged domain. Without `--compressed` you get raw gzip bytes (file says "gzip compressed data", not "PNG").
+- **Rule**: To pull static assets (favicons/images/css) from a CF-protected site, try `curl -A "<browser UA>" --compressed` on the host first — it's far simpler than driving the browser. Always include `--compressed`.
+
+## 2026-07-11: cross-origin image → base64 needs a same-origin document
+- **Context**: Tried to canvas a favicon into base64 from a page on a different origin — `canvas.toDataURL()` throws a taint SecurityError.
+- **Learning**: Canvas read-back is blocked for cross-origin images without CORS. But navigating the browser DIRECTLY to the image URL makes the generated document same-origin with the image, so `document.images[0]` canvases cleanly. `https://www.google.com/s2/favicons?domain=<host>&sz=128` is also same-origin (google.com) and canvas-readable — but it often returns a generic/greyscale icon, so prefer the site's real favicon URL.
+- **Rule**: To get a cross-origin image as base64, `navigate` to the image URL itself, then canvas `document.images[0]`. Prefer downloading the raw bytes with curl (previous entry) when you just need the file.
