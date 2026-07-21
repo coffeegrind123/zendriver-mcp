@@ -113,6 +113,43 @@ mode, `bypass_cloudflare()` solves it (wraps zendriver's built-in `verify_cf`).
 `set_user_agent` / `set_locale` / `set_timezone` / `set_geolocation` align the
 fingerprint with a proxy's geo when needed.
 
+Do **not** pass `low_memory=true` when stealth matters: its flags (software WebGL,
+`--disable-gpu`) are themselves a bot signal.
+
+#### When `bypass_cloudflare()` times out — check for a hard-fail before retrying
+
+`bypass_cloudflare()` polls for a Turnstile **checkbox**. If Turnstile has already
+fingerprinted the browser and rejected it, it never renders one — it renders a
+*feedback report* instead, and the call can only ever time out. Retrying, raising
+the timeout, or re-clicking cannot fix this. Confirm with `get_content()`:
+
+```
+iframe src=".../challenge-platform/h/b/fr/<id>/en-us/auto/failure#..."
+                                                        ^^^^^^^ hard-fail
+```
+
+`.../auto/failure` (and a visible `cf-turnstile-feedback` wrapper) = fingerprint
+rejection. Stop clicking and change approach.
+
+**Try a crawler User-Agent first when the goal is public SEO/markup.** Many sites
+allowlist search crawlers by UA string alone, with no reverse-DNS verification, so
+plain `curl` walks straight past the challenge and returns the real HTML — no
+browser, no solver, far faster and more reliable:
+
+```
+curl -sA "Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)" https://site/robots.txt
+```
+
+Worked on a self-hosted Turnstile gate (2026-07) that hard-failed the automated
+browser but served `robots.txt` / `sitemap.xml` / full HTML to a Googlebot UA.
+Note a self-hosted widget (its own `<form action="/verify_captcha">` with a
+`data-sitekey`) is NOT the standard CF edge challenge — the edge-challenge advice
+above may not apply to it at all.
+
+Reach for this only for **publicly published** content (markup, robots, sitemaps)
+that the site already serves to crawlers by design — not to get at anything gated,
+paid, or private.
+
 ## General Rules
 
 1. **Autonomy**: Execute the full browsing workflow without asking for
