@@ -25,14 +25,20 @@ Check if browser is running and get its state. Returns: running/stopped, tabs.
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
 | url | string | yes | Full URL to navigate to |
+| settle | number | no | Seconds to wait for network idle after the page commits (default 10.0). `0` returns as soon as navigation commits. |
 
-Always follow with `wait(1-2)`.
+**Do NOT follow with a wait.** navigate settles the page itself and returns e.g.
+`Navigated to <url> (network idle after 0.6s, 246 requests)`. `network still
+active after 10.0s` is normal for a polling/streaming page and usually still
+reads fine.
 
 ### go_back / go_forward
-Navigate history. No parameters.
+Navigate history. No parameters. These do NOT settle — follow with
+`wait_for_network()` if you intend to read the page straight after.
 
 ### reload_page
-Reload current page. Follow with `wait()`.
+Reload current page. Does NOT settle either; follow with `wait_for_network()`
+before reading.
 
 ### get_page_info
 Get current URL, title, and page metadata.

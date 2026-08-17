@@ -5,7 +5,6 @@
 ```
 start_browser()
 navigate("https://site.com/login")
-wait(2)
 get_interaction_tree()
 type_text(text="user@email.com", selector="<username_id>")
 type_text(text="password123", selector="<password_id>")
@@ -13,7 +12,6 @@ click(selector="<login_button_id>")
 wait_for_network(timeout=10)
 screenshot()                    # verify login succeeded
 navigate("https://site.com/dashboard")
-wait(2)
 get_text_content()              # scrape authenticated content
 stop_browser()
 ```
@@ -23,13 +21,12 @@ stop_browser()
 ```
 start_browser(headless=true)
 navigate("https://site.com/results?page=1")
-wait(2)
 
 # Per page:
 #   execute_js("(function(){ ... return items; })()")  ← extract data
 #   get_interaction_tree()                              ← find "Next" button
 #   click(selector="<next_id>")                        ← paginate
-#   wait(2)                                            ← let page load
+#   call_tool("wait_for_network", {"timeout": 5})       ← the CLICK needs this
 #   If no "Next" button in tree → done
 
 stop_browser()
@@ -41,7 +38,6 @@ SPAs load content asynchronously. The DOM mutates after initial load.
 
 ```
 navigate("https://spa-app.com")
-wait(2)
 wait_for_element(selector=".content-loaded", timeout=15, visible=true)
 get_interaction_tree()          # now the real content is available
 ```
@@ -98,7 +94,6 @@ stop_browser()
 start_browser()
 set_cookies(cookies=saved_cookies)
 navigate("https://site.com/dashboard")
-wait(2)                         # already authenticated
 stop_browser()
 ```
 
@@ -109,7 +104,6 @@ Check a page periodically for changes.
 ```
 start_browser(headless=true)
 navigate(url)
-wait(3)
 previous = get_text_content()
 
 # Loop:
@@ -180,7 +174,7 @@ Scroll to bottom repeatedly until no new content loads.
 # Loop:
 #   height = execute_js("document.body.scrollHeight")
 #   scroll(direction="down", amount=height)
-#   wait(2)
+#   wait_for_network(timeout=5)     ← the scroll triggers the lazy load
 #   new_height = execute_js("document.body.scrollHeight")
 #   if new_height == height → done (no new content)
 
@@ -216,7 +210,6 @@ get_interaction_tree()          # partial or empty
 
 # GOOD
 navigate("https://spa.com")
-wait(2)
 get_interaction_tree()          # complete
 ```
 
@@ -229,7 +222,6 @@ click(selector="5")             # id=5 is now something else!
 
 # GOOD
 navigate(other_page)
-wait(2)
 tree2 = get_interaction_tree()  # fresh IDs
 click(selector="<new_id>")
 ```

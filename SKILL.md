@@ -1,25 +1,61 @@
 ---
 name: browser-automation
-description: Browser automation using browser MCP tools for web scraping, form filling, testing, and security auditing. Provides 35+ tools for controlling a Chromium browser — navigation, element interaction, DOM querying, tab management, network monitoring, and JavaScript execution. Use when asked to browse, scrape, fill a form, automate a website, check a page, open a browser, take a screenshot, monitor network requests, run a security audit, bypass a Cloudflare challenge, or interact with any web page programmatically. Features a token-optimized DOM walker that reduces HTML to compact JSON with numeric IDs, plus Cloudflare Turnstile solving and fingerprint (user-agent/locale/timezone/geo) overrides.
-allowed-tools: mcp__browser__start_browser mcp__browser__stop_browser mcp__browser__navigate mcp__browser__click mcp__browser__type_text mcp__browser__fill_form mcp__browser__submit_form mcp__browser__select_option mcp__browser__screenshot mcp__browser__get_content mcp__browser__get_text_content mcp__browser__get_interaction_tree mcp__browser__find_element mcp__browser__find_all_elements mcp__browser__find_buttons mcp__browser__find_inputs mcp__browser__execute_js mcp__browser__wait mcp__browser__wait_for_element mcp__browser__wait_for_network mcp__browser__wait_for_request mcp__browser__scroll mcp__browser__scroll_to_element mcp__browser__press_enter mcp__browser__press_key mcp__browser__mouse_click mcp__browser__focus_element mcp__browser__clear_input mcp__browser__upload_file mcp__browser__get_element_text mcp__browser__get_element_attribute mcp__browser__get_page_info mcp__browser__get_browser_status mcp__browser__new_tab mcp__browser__list_tabs mcp__browser__switch_tab mcp__browser__close_tab mcp__browser__go_back mcp__browser__go_forward mcp__browser__reload_page mcp__browser__get_cookies mcp__browser__set_cookie mcp__browser__clear_storage mcp__browser__get_local_storage mcp__browser__set_local_storage mcp__browser__get_console_logs mcp__browser__clear_logs mcp__browser__get_network_logs mcp__browser__run_security_audit mcp__browser__bypass_cloudflare mcp__browser__is_cloudflare_challenge_present mcp__browser__set_user_agent mcp__browser__clear_user_agent mcp__browser__set_locale mcp__browser__set_timezone mcp__browser__set_geolocation
+description: Browser automation using browser MCP tools for web scraping, form filling, testing, and security auditing. Controls a real Chromium through a 10-tool gateway that reaches ~98 underlying tools — navigation, element interaction, DOM querying, tab management, network monitoring, and JavaScript execution. Use when asked to browse, scrape, fill a form, automate a website, check a page, open a browser, take a screenshot, monitor network requests, run a security audit, bypass a Cloudflare challenge, or interact with any web page programmatically. Features a token-optimized DOM walker that reduces HTML to compact JSON with numeric IDs, plus Cloudflare Turnstile solving and fingerprint (user-agent/locale/timezone/geo) overrides.
+allowed-tools: mcp__browser__start_browser mcp__browser__stop_browser mcp__browser__navigate mcp__browser__click mcp__browser__type_text mcp__browser__get_text_content mcp__browser__get_interaction_tree mcp__browser__search_tools mcp__browser__describe_tool mcp__browser__call_tool
 when_to_use: "Use when the user wants to browse a website, scrape web content, fill out forms, automate browser interactions, take screenshots, run security audits, or interact with any web page. Examples: 'open this URL', 'scrape that page', 'fill out the form', 'take a screenshot', 'check this website', 'automate the login', 'run a security audit', 'monitor network requests'."
 argument-hint: "[url or task description]"
 context: fork
 metadata:
   author: coffeegrind123
-  version: "1.3"
+  version: "1.4"
 ---
 
 # Browser Automation
 
+## The server runs in GATEWAY mode — only 10 tools are directly callable
+
+Exactly these ten appear as `mcp__browser__*`:
+
+```
+start_browser  stop_browser  navigate  click  type_text
+get_text_content  get_interaction_tree
+search_tools  describe_tool  call_tool
+```
+
+**Every other capability** — screenshots, forms, cookies, localStorage, tabs,
+network/console logs, JS execution, scrolling, stealth/user-agent, geolocation,
+security audit, Cloudflare — exists on the server but is *hidden* to keep the
+context small. Reach it in one hop:
+
+```
+search_tools(query="read cookies")        → ranked 'name(params) — summary' lines
+describe_tool(name="set_cookie")          → full schema, when the summary is not enough
+call_tool(name="set_cookie", arguments={...})   → actually run it
+```
+
+`call_tool` validates `arguments` against the real schema, so a mistyped field
+returns a clear error rather than failing silently. Pass `{}` for a no-arg tool.
+
+Throughout this document, any tool NOT in the ten above is written by its bare
+name for readability — invoke it as `call_tool(name="<that name>", arguments={…})`.
+If you are unsure a tool exists, `search_tools` is cheaper than guessing.
+
 ## Lifecycle: Every Session Follows This
 
 ```
-start_browser() → navigate(url) → wait(1-2) → [work] → stop_browser()
+start_browser() → navigate(url) → [work] → stop_browser()
 ```
 
 No tool works until `start_browser()` completes. No page tools work until
 `navigate()` completes. Always `stop_browser()` when finished.
+
+**`navigate()` settles the page before it returns — do not add a wait after it.**
+It waits for the network to go quiet and reports how that ended, e.g.
+`Navigated to https://x/ (network idle after 0.6s, 246 requests)`. A read
+straight afterwards sees rendered content. `network still active after 10.0s` is
+normal for a page that polls or streams and usually still reads fine. Pass
+`settle=0` to return the instant navigation commits, when you will not read the
+page.
 
 | Scenario | Call |
 |----------|------|
@@ -74,8 +110,9 @@ Interactive element (button, link, input)?
 ```
 Click → get_interaction_tree() → click(selector="<id>")
       → OR click(text="Button Text") if you know exact text
-Fill form → fill_form(json={"#email": "a@b.com", "#pass": "123"})
-          → OR type_text(text="value", selector="<id>")
+Fill form → fill_form(form_data="{\"#email\": \"a@b.com\", \"#pass\": \"123\"}")
+            NOTE: form_data is a JSON *string*, not an object. Serialize it.
+          → OR type_text(text="value", selector="<id>")   [core tool, direct]
 Dropdown  → select_option(selector="<css>", value="option_value")
 Upload    → upload_file(selector="input[type=file]", file_path="/path")
 Submit    → submit_form() or press_enter()
@@ -84,11 +121,19 @@ Submit    → submit_form() or press_enter()
 ### "I need to wait for something"
 
 ```
-Page load       → wait(seconds=2)
-Element appear  → wait_for_element(selector="css", timeout=10, visible=true)
-Network idle    → wait_for_network(timeout=5)
+Page load        → nothing. navigate() already settled it.
+Element appear   → wait_for_element(selector="css", timeout=10, visible=true)
+Network idle     → wait_for_network(timeout=5)     # AFTER a click, not after navigate
 Specific request → wait_for_request(url_pattern="api/data")
 ```
+
+All three real waits are hidden tools — `call_tool(name="wait_for_element", …)`.
+That extra hop is exactly why you should not spend one on a page load that
+`navigate()` has already handled.
+
+A blind `wait(seconds=N)` is the last resort: slower than settling on a fast
+page, too short on a slow one. Reach for it only when the thing you are waiting
+for is neither an element nor a request — an animation, or a rate limit.
 
 ### "I need to extract data"
 
@@ -159,8 +204,17 @@ paid, or private.
    Raw HTML burns context fast. Only use `get_content()` for HTML structure
    the interaction tree doesn't expose.
 
-3. **Wait after navigate**: Always `wait(1-2)` after `navigate()`. SPAs need
-   hydration time. Use `wait_for_element()` for dynamic content.
+3. **Do not wait after navigate**: `navigate()` settles the page itself and says
+   how it ended. Add a wait only after a *click* or an action that starts new
+   traffic — `wait_for_element()` for content an SPA hydrates in late, or
+   `wait_for_network()` after a submit.
+
+3a. **An empty read tells you which problem you have.** `get_text_content()` on a
+   page with no text returns `[chars 0-0 of 0]` followed by the reason:
+   `still loading` (read again, or navigate with a bigger `settle`), `no body
+   element`, `has markup` (the text is in an iframe or shadow root — try
+   `get_content` or `get_interaction_tree`), or `really is blank`. Read that line
+   before concluding the site blocked you.
 
 4. **Numeric IDs are ephemeral**: They change on every `get_interaction_tree()`
    call. Get the tree, use IDs immediately. Never cache across navigations.
@@ -185,42 +239,50 @@ paid, or private.
 
 ## Common Workflows
 
+Core tools are called directly; everything else goes through `call_tool`.
+
 ### Web Scraping
 ```
-start_browser(headless=true) → navigate(url) → wait(2)
-→ get_interaction_tree()     → get_text_content()
-→ execute_js("...")          → stop_browser()
+start_browser(headless=true) → navigate(url)      # settled on return
+→ get_text_content()                              # or get_interaction_tree()
+→ call_tool(name="execute_js", arguments={"script": "..."})
+→ stop_browser()
 ```
 
 ### Form Filling
 ```
-start_browser() → navigate(url) → wait(2)
+start_browser() → navigate(url)
 → get_interaction_tree()
-→ fill_form(json={"#email": "user@ex.com", "#password": "secret"})
-→ click(selector="<submit_id>") → wait_for_network()
-→ screenshot() → stop_browser()
+→ call_tool(name="fill_form", arguments={"form_data": "{\"#email\": \"user@ex.com\", \"#password\": \"secret\"}"})
+→ click(selector="<submit_id>")
+→ call_tool(name="wait_for_network", arguments={"timeout": 5})    # the click, not the navigate
+→ call_tool(name="screenshot", arguments={"save_path": "/tmp/after.png"})
+→ stop_browser()
 ```
 
 ### Multi-Tab
 ```
-start_browser() → navigate("site-a.com") → wait(2) → [work]
-→ new_tab(url="site-b.com") → wait(2) → [work]
-→ list_tabs() → switch_tab(tab_id=0)
-→ close_tab(tab_id=1) → stop_browser()
+start_browser() → navigate("https://site-a.com") → [work]
+→ call_tool(name="new_tab", arguments={"url": "https://site-b.com"}) → [work]
+→ call_tool(name="list_tabs")
+→ call_tool(name="switch_tab", arguments={"tab_id": "tab_1"})
+→ call_tool(name="close_tab", arguments={"tab_id": "tab_2"})
+→ stop_browser()
 ```
 
 ### API Response Interception
 ```
-start_browser() → navigate(url) → wait(2)
-→ clear_logs() → click(selector="<trigger_id>")
-→ wait_for_request(url_pattern="api/v2/data")
+start_browser() → navigate(url)
+→ call_tool(name="clear_logs")                    # clear BEFORE the action
+→ click(selector="<trigger_id>")
+→ call_tool(name="wait_for_request", arguments={"url_pattern": "api/v2/data"})
 → stop_browser()
 ```
 
 ### Security Audit
 ```
-start_browser() → navigate(url) → wait(2)
-→ run_security_audit() → stop_browser()
+start_browser() → navigate(url)
+→ call_tool(name="run_security_audit") → stop_browser()
 ```
 
 ## Error Handling
@@ -228,14 +290,16 @@ start_browser() → navigate(url) → wait(2)
 | Symptom | Diagnosis | Fix |
 |---------|-----------|-----|
 | "Browser not started" | Forgot lifecycle | `start_browser()` first |
-| "No page loaded" | Forgot navigation | `navigate(url)` + `wait()` |
+| "No page loaded" | Forgot navigation | `navigate(url)` — no wait needed |
+| `[chars 0-0 of 0]` | Read the reason on the next line | It names the fix: still loading / no body / markup-but-no-text / blank |
+| Unknown tool name | It is hidden, not absent | `search_tools(query="…")` then `call_tool` |
 | Click does nothing | Element not visible | `scroll_to_element()` then retry |
 | Element not found | Page not loaded yet | `wait_for_element()` then re-query |
 | Stale numeric ID | Page mutated | Re-call `get_interaction_tree()` |
 | execute_js fails | Started with `return` | Remove `return`, use IIFE |
 | Network logs empty | Didn't clear first | `clear_logs()` before action |
 | Form submit no effect | Need explicit submit | `submit_form()` or `press_enter()` |
-| Interaction tree empty | SPA/React not hydrated | `wait(3-5)` then retry, or use `find_inputs()`/`find_buttons()` |
+| Interaction tree empty | SPA hydrates after the network settles | `wait_for_element()` on something you expect, or re-navigate with a larger `settle`; `find_inputs()`/`find_buttons()` as a fallback |
 | Clicks blocked by overlay | Cookie banner or modal | Dismiss banner first: `click(text="Accept All")` |
 
 ## Critical Pitfalls
@@ -244,14 +308,19 @@ start_browser() → navigate(url) → wait(2)
 - ❌ Do NOT use `get_content()` as primary discovery — wastes tokens massively
 - ❌ Do NOT cache numeric IDs across navigations — they regenerate each call
 - ❌ Do NOT start `execute_js` scripts with `return` — use bare expression or IIFE
-- ❌ Do NOT forget `wait()` after `navigate()` — SPAs need hydration time
+- ❌ Do NOT add a `wait()` after `navigate()` — it already settled the page, and
+  under the gateway that wasted wait costs a whole `call_tool` hop
 - ❌ Do NOT leave tabs open — close with `close_tab()` when done
 - ❌ Do NOT read network logs without clearing first — stale entries mislead
 - ❌ Do NOT use `mouse_click(x,y)` unless no other option — coordinates are fragile
 - ❌ Do NOT call `get_interaction_tree()` then ignore the IDs — that's the whole point
 - ❌ Do NOT interact with elements before dismissing cookie consent banners — they block clicks
 - ❌ Do NOT assume auth is in cookies — check `get_local_storage()` for JWT tokens too
-- ❌ Do NOT take screenshots without a timeout — screenshots can hang indefinitely on slow or unresponsive pages, blocking the session. Always set a timeout (e.g. `timeout: 10000`)
+- ❌ Do NOT pass `timeout` to `screenshot` — it has no such parameter (only
+  `save_path` and `full_resolution`), and `call_tool` validates arguments, so it
+  is a hard error. Screenshots really can hang on an unresponsive page; guard
+  against that by settling the page first (which `navigate` now does) rather than
+  by inventing an argument
 
 ## Self-Refinement Protocol
 
